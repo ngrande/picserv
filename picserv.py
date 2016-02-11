@@ -1,20 +1,21 @@
+#!/usr/bin/env python3
+
 from socketserver import socket
 import _thread
 import sys
+import os
 import string
 
 
 class PicServ:
-    def __init__(self, port):
+    def __init__(self, port, data_path):
         self.port = port
+        self.data_path = data_path
         self.serversocket = socket.socket(family=socket.AF_INET,
                                           type=socket.SOCK_STREAM)
 
     def start_async(self):
         _thread.start_new_thread(self.start, ())
-        # self.listenThread = threading.Thread(self.start)
-        # self.listenThread.start()
-        # threading.Thread(self.start(port)).start()
 
     def start(self):
         self.serversocket.bind(('', self.port))
@@ -23,15 +24,22 @@ class PicServ:
         while True:
             (clientsocket, address) = self.serversocket.accept()
             print('client accepted on port {0!s}'.format(self.port))
-            clientsocket.send(bytes('<html><h1>Hello Client!</h1></html>',
-                                    'utf-8'))
+            with open(self.data_path, 'r') as f:
+                # fsize = os.path.getsize(self.data_path)
+                clientsocket.send(bytes('HTTP/1.1 200 OK', 'utf-8'))
+                clientsocket.send(bytes('Content-type: text', 'utf-8'))
+                # # clientsocket.send(bytes('Accept-ranges: bytes', 'utf-8'))
+                # clientsocket.send(bytes('Content-length: {0!s}'.format(fsize),
+                #                         'utf-8'))
+                content = f.read()
+                clientsocket.send(bytes(content, 'utf-8'))
             clientsocket.close()
             print('removed client on port {0!s}'.format(self.port))
 
 
 def main():
-    for port in sys.argv[1:]:
-        ps = PicServ(int(port))
+    for port in sys.argv[2:]:
+        ps = PicServ(int(port), sys.argv[1])
         print('starting picserv instance on port {0!s}'.format(port))
         ps.start_async()
     input()
