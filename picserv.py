@@ -25,14 +25,17 @@ class PicServ:
             (clientsocket, address) = self.serversocket.accept()
             print('client accepted on port {0!s}'.format(self.port))
             with open(self.data_path, 'r') as f:
-                # fsize = os.path.getsize(self.data_path)
-                clientsocket.send(bytes('HTTP/1.1 200 OK', 'utf-8'))
-                clientsocket.send(bytes('Content-type: text', 'utf-8'))
-                # # clientsocket.send(bytes('Accept-ranges: bytes', 'utf-8'))
-                # clientsocket.send(bytes('Content-length: {0!s}'.format(fsize),
-                #                         'utf-8'))
                 content = f.read()
-                clientsocket.send(bytes(content, 'utf-8'))
+                contentsize = len(content)
+                clientsocket.send(bytes('HTTP/1.1 200 OK', 'utf-8'))
+                clientsocket.send(bytes('Content-type: text/html;'
+                                        'charset=utf-8', 'utf-8'))
+                clientsocket.send(bytes('Accept-ranges: bytes', 'utf-8'))
+                clientsocket.send(bytes('Content-length: {0!s}'
+                                        .format(contentsize), 'utf-8'))
+                sent = 0
+                while sent < contentsize:
+                    sent += clientsocket.send((bytes(content[sent:], 'utf-8')))
             clientsocket.close()
             print('removed client on port {0!s}'.format(self.port))
 
