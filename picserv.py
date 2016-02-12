@@ -11,8 +11,8 @@ import re
 
 class PicServ:
     """ Simple webserver script to handle GET reqeusts """
-    def __init__(self, port):
-        self.rootpath = './webres'
+    def __init__(self, port, rootpath):
+        self.rootpath = rootpath  # './webres'
         self.port = port
         self.serversocket = socket.socket(family=socket.AF_INET,
                                           type=socket.SOCK_STREAM)
@@ -96,10 +96,10 @@ class PicServ:
 
 
 def main():
-    if len(sys.argv) < 2:
-        raise EnvironmentError("Usage: picserv.py port0 [, port1, port2 ...]")
-    for port in sys.argv[1:]:
-        ps = PicServ(int(port))
+    if len(sys.argv) < 3:
+        print('At least 2 arguments were expected: root_path and port')
+    for port in sys.argv[2:]:
+        ps = PicServ(int(port), sys.argv[1])
         ps.start_async()
     input()
 
