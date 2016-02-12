@@ -6,12 +6,14 @@ import sys
 import os
 import string
 import time
+import re
 
 
 class PicServ:
-    def __init__(self, port, data_path):
+    """ Simple webserver script to handle GET reqeusts """
+    def __init__(self, port):
+        self.rootpath = './webres'
         self.port = port
-        self.data_path = data_path
         self.serversocket = socket.socket(family=socket.AF_INET,
                                           type=socket.SOCK_STREAM)
 
@@ -19,56 +21,85 @@ class PicServ:
         _thread.start_new_thread(self.start, ())
 
     def start(self):
+        print('PicServ instance started on port {0!s}'.format(self.port))
         self.serversocket.bind(('', self.port))
         self.serversocket.listen(5)
         while True:
             (clientsocket, address) = self.serversocket.accept()
-            _thread.start_new_thread(self._send, (clientsocket,))
+            print('client connected on port {0!s}, starting new thread'
+                  .format(self.port))
+            _thread.start_new_thread(self._process_request, (clientsocket,
+                                                             address))
 
-    def _send(self, socket):
-            print('client accepted on port {0!s}'.format(self.port))
-            msg = socket.recv(2048)
-            print(msg)
-            # TODO: rewrite the picserv to handle all get reqeusts
-            if msg[0:6] != bytes('GET / ', 'utf-8'):
-                print('no GET request')
-                socket.close()
-                return
+    def _process_request(self, socket, address):
+        print('client connected on {0!s}:{1!s}'.format(address, self.port))
+        msg = self._receive_msg(socket).decode('utf-8')
+        print('message received:')
+        print(msg)
+        if msg[:3] == 'GET':
+            # send requested resource to client
+            # get requested resource path from msg
+            print('GET request received')
+            reqsrcpath = self._get_path(msg)
+            if self._exists_resource(reqsrcpath) or reqsrcpath == '/':
+                print('requested resource:')
+                print(reqsrcpath)
+                fbytes = self._get_res_file_bytes(reqsrcpath)
+                self._send(socket, fbytes)
+        # else:
+            # not yet supported
+        socket.close()
 
-            with open(self.data_path, 'r') as f:
+    def _get_path(self, msg):
+        msgparts = re.findall('[^ ]*', msg)
+        fmsgparts = []
+        for s in msgparts:
+            if len(s) > 0:
+                fmsgparts.append(s)
+        if len(fmsgparts) >= 3:
+            return fmsgparts[1]
+        else:
+            print('unable to read message')
 
-                # content = f.read()
-                fsize = os.path.getsize(self.data_path)
-                # content = 'HTTP/1.1 200 OK\r\n'
-                # content += 'Content-type: text/html;charset=utf-8\r\n'
-                # content += 'Accept-ranges: bytes\r\n'
-                # content += 'Content-length: {0!s}\r\n'.format(fsize)
-                content = f.read()
-                contentsize = len(content)
-                print('sending: {0}'.format(content))
-                # content = f.read()
-                # contentsize = len(content)
-                # socket.send(bytes('HTTP/1.1 200 OK', 'utf-8'))
-                # socket.send(bytes('Content-type: image/gif;', 'utf-8'))
-                #                         'charset=utf-8', 'utf-8'))
-                # socket.send(bytes('Accept-ranges: bytes', 'utf-8'))
-                # socket.send(bytes('Content-length: {0!s}'
-                #                   .format(contentsize), 'utf-8'))
-                totalsent = 0
-                while totalsent < contentsize:
-                    sent = socket.send(bytes(content[totalsent:], 'utf-8'))
-                    if sent == 0:
-                        print('Client closed connection')
-                    totalsent += sent
-            # time.sleep(0.01)  # workaround... TODO: find better solution
-            socket.close()
+    def _exists_resource(self, path):
+        completepath = self.rootpath + path
+        return os.path.isfile(completepath)
+
+    def _get_res_file_bytes(self, path):
+        fbytes = None
+        if path == '/':
+            path = '/index.html'
+        with open(self.rootpath + path, 'rb') as f:
+            fbytes = f.read()
+        return fbytes
+
+    def _receive_msg(self, socket):
+        # recvbytes = []
+        # recv = [0]
+        # while len(recv) != 0 and recv != 0:
+        recv = socket.recv(2048)  # TODO: find a way to be sure that all bytes
+        #                                 were received
+        #   print(recv)
+        #   recvbytes += recv
+        # print('msg completely received')
+        return recv
+
+    def _send(self, socket, data):
+            datasize = len(data)
+            totalsent = 0
+            while totalsent < datasize:
+                sent = socket.send(data[totalsent:])
+                if sent == 0:
+                    print('Client closed connection')
+                totalsent += sent
             print('removed client on port {0!s}'.format(self.port))
 
 
 def main():
-    for port in sys.argv[2:]:
-        ps = PicServ(int(port), sys.argv[1])
-        print('starting picserv instance on port {0!s}'.format(port))
+    if len(sys.argv) < 2:
+        raise EnvironmentError("Usage: picserv.py port0 [, port1, port2 ...]")
+    for port in sys.argv[1:]:
+        ps = PicServ(int(port))
         ps.start_async()
     input()
 
