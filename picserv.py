@@ -10,75 +10,82 @@ import re
 
 
 class PicServ:
-    """ Simple webserver script to handle GET reqeusts """
-    def __init__(self, addr, port, rootpath):
-        self.rootpath = rootpath  # './webres'
+    """ Simple webserver script to handle GET requests """
+    def __init__(self, addr, port, root_path):
+        self.root_path = root_path  # './webres'
         self.port = port
         self.addr = addr
-        self.serversocket = socket.socket(family=socket.AF_INET,
-                                          type=socket.SOCK_STREAM)
+        self.server_socket = socket.socket(family=socket.AF_INET,
+                                           type=socket.SOCK_STREAM)
 
     def start_async(self):
         _thread.start_new_thread(self.start, ())
 
     def start(self):
-        self.serversocket.bind((self.addr, self.port))
-        self.serversocket.listen(5)
+        self.server_socket.bind((self.addr, self.port))
+        self.server_socket.listen(5)
         print('PicServ instance started on  {0!s}:{1!s}'.format(self.addr,
                                                                 self.port))
         while True:
-            (clientsocket, address) = self.serversocket.accept()
+            (client_socket, address) = self.server_socket.accept()
             print('client connected on port {0!s}, starting new thread'
                   .format(self.port))
-            _thread.start_new_thread(self._process_request, (clientsocket,
+            _thread.start_new_thread(self._process_request, (client_socket,
                                                              address))
 
     def _process_request(self, socket, address):
         print('client connected on {0!s}:{1!s}'.format(address, self.port))
-        msg = self._receive_msg(socket).decode('utf-8')
-        print('message received:')
-        print(msg)
-        if msg[:3] == 'GET':
-            # send requested resource to client
-            # get requested resource path from msg
-            print('GET request received')
-            reqsrcpath = self._get_path(msg)
-            if self._exists_resource(reqsrcpath) or reqsrcpath == '/':
-                print('requested resource:')
-                print(reqsrcpath)
-                fbytes = self._get_res_file_bytes(reqsrcpath)
-                self._send(socket, fbytes)
-        # else:
-            # not yet supported
-        socket.close()
+        try:
+            # TODO: get rid of the decode - just use the plain bytes
+            # to prevent decoding errors
+            msg = self._receive_msg(socket).decode('utf-8')
+            print('message received:')
+            print(msg)
+            if msg[:3] == 'GET':
+                # send requested resource to client
+                # get requested resource path from msg
+                print('GET request received')
+                req_source_path = self._get_path(msg)
+                if self._exists_resource(req_source_path)
+                or req_source_path == '/':
+                    print('requested resource:')
+                    print(req_source_path)
+                    file_bytes = self._get_res_file_bytes(req_source_path)
+                    self._send(socket, file_bytes)
+            # else:
+                # not yet supported
+        finally:  # be sure to close the socket
+            socket.close()
 
     def _get_path(self, msg):
-        msgparts = re.findall('[^ ]*', msg)
-        fmsgparts = []
-        for s in msgparts:
+        msg_parts = re.findall('[^ ]*', msg)
+        filtered_msg_parts = []
+        for s in msg_parts:
             if len(s) > 0:
-                fmsgparts.append(s)
-        if len(fmsgparts) >= 3:
-            return fmsgparts[1]
+                filtered_msg_parts.append(s)
+        if len(filtered_msg_parts) >= 3:
+            return filtered_msg_parts[1]
         else:
             print('unable to read message')
 
     def _exists_resource(self, path):
-        completepath = self.rootpath + path
-        return os.path.isfile(completepath)
+        complete_path = self.root_path + path
+        return os.path.isfile(complete_path)
 
     def _get_res_file_bytes(self, path):
-        fbytes = None
+        file_bytes = None
         if path == '/':
             path = '/index.html'
-        with open(self.rootpath + path, 'rb') as f:
-            fbytes = f.read()
-        return fbytes
+        with open(self.root_path + path, 'rb') as f:
+            file_bytes = f.read()
+        return file_bytes
 
     def _receive_msg(self, socket):
         # recvbytes = []
         # recv = [0]
         # while len(recv) != 0 and recv != 0:
+        # TODO: check if there is a message to be received by the host...
+        # else the server will wait forever
         recv = socket.recv(2048)  # TODO: find a way to be sure that all bytes
         #                                 were received
         #   print(recv)
