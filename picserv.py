@@ -21,9 +21,11 @@ class PicServ:
         _thread.start_new_thread(self.start, ())
 
     def start(self):
-        print('PicServ instance started on port {0!s}'.format(self.port))
-        self.serversocket.bind(('', self.port))
+        hostname = socket.gethostname()
+        self.serversocket.bind((hostname, self.port))
         self.serversocket.listen(5)
+        print('PicServ instance started on  {0!s}:{1!s}'.format(hostname,
+                                                                self.port))
         while True:
             (clientsocket, address) = self.serversocket.accept()
             print('client connected on port {0!s}, starting new thread'
