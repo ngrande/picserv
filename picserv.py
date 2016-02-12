@@ -11,9 +11,10 @@ import re
 
 class PicServ:
     """ Simple webserver script to handle GET reqeusts """
-    def __init__(self, port, rootpath):
+    def __init__(self, addr, port, rootpath):
         self.rootpath = rootpath  # './webres'
         self.port = port
+        self.addr = addr
         self.serversocket = socket.socket(family=socket.AF_INET,
                                           type=socket.SOCK_STREAM)
 
@@ -21,10 +22,9 @@ class PicServ:
         _thread.start_new_thread(self.start, ())
 
     def start(self):
-        hostname = socket.gethostname()
-        self.serversocket.bind((hostname, self.port))
+        self.serversocket.bind((self.addr, self.port))
         self.serversocket.listen(5)
-        print('PicServ instance started on  {0!s}:{1!s}'.format(hostname,
+        print('PicServ instance started on  {0!s}:{1!s}'.format(self.addr,
                                                                 self.port))
         while True:
             (clientsocket, address) = self.serversocket.accept()
@@ -98,10 +98,10 @@ class PicServ:
 
 
 def main():
-    if len(sys.argv) < 3:
-        print('At least 2 arguments were expected: root_path and port')
-    for port in sys.argv[2:]:
-        ps = PicServ(int(port), sys.argv[1])
+    if len(sys.argv) < 4:
+        print('At least 3 arguments were expected: root_path, addr and port')
+    for port in sys.argv[3:]:
+        ps = PicServ(sys.argv[2], int(port), sys.argv[1])
         ps.start_async()
     input()
 
