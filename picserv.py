@@ -27,10 +27,25 @@ class PicServ:
 
     def _send(self, socket):
             print('client accepted on port {0!s}'.format(self.port))
-            with open(self.data_path, 'rb') as f:
+            msg = socket.recv(2048)
+            print(msg)
+            # TODO: rewrite the picserv to handle all get reqeusts
+            if msg[0:6] != bytes('GET / ', 'utf-8'):
+                print('no GET request')
+                socket.close()
+                return
+
+            with open(self.data_path, 'r') as f:
 
                 # content = f.read()
-                contentsize = os.path.getsize(self.data_path)
+                fsize = os.path.getsize(self.data_path)
+                # content = 'HTTP/1.1 200 OK\r\n'
+                # content += 'Content-type: text/html;charset=utf-8\r\n'
+                # content += 'Accept-ranges: bytes\r\n'
+                # content += 'Content-length: {0!s}\r\n'.format(fsize)
+                content = f.read()
+                contentsize = len(content)
+                print('sending: {0}'.format(content))
                 # content = f.read()
                 # contentsize = len(content)
                 # socket.send(bytes('HTTP/1.1 200 OK', 'utf-8'))
@@ -39,13 +54,13 @@ class PicServ:
                 # socket.send(bytes('Accept-ranges: bytes', 'utf-8'))
                 # socket.send(bytes('Content-length: {0!s}'
                 #                   .format(contentsize), 'utf-8'))
-                # totalsent = 0
-                # while totalsent < contentsize:
-                socket.sendfile(f)
-                #   if sent == 0:
-                #       print('Client closed connection')
-                #   totalsent += sent
-            time.sleep(0.01)  # workaround... TODO: find better solution
+                totalsent = 0
+                while totalsent < contentsize:
+                    sent = socket.send(bytes(content[totalsent:], 'utf-8'))
+                    if sent == 0:
+                        print('Client closed connection')
+                    totalsent += sent
+            # time.sleep(0.01)  # workaround... TODO: find better solution
             socket.close()
             print('removed client on port {0!s}'.format(self.port))
 
