@@ -7,6 +7,7 @@ import os
 import string
 import time
 import re
+import ssl
 
 
 class PicServ:
@@ -17,6 +18,9 @@ class PicServ:
         self.addr = addr
         self.server_socket = socket.socket(family=socket.AF_INET,
                                            type=socket.SOCK_STREAM)
+        # TODO: implement TLS
+        # SSLContext.wrap_socket()
+        # ssl.wrap_socket(self.server_socket, keyfile, certfile)
 
     def start_async(self):
         _thread.start_new_thread(self.start, ())
@@ -101,11 +105,12 @@ class PicServ:
         # print('msg completely received')
         return recv
 
-    def _send(self, socket, data):
-            datasize = len(data)
+    def _send(self, socket, msg_bytes):
+            msg_size = len(msg_bytes)
+
             totalsent = 0
-            while totalsent < datasize:
-                sent = socket.send(data[totalsent:])
+            while totalsent < msg_size:
+                sent = socket.send(msg_bytes[totalsent:])
                 if sent == 0:
                     print('Client closed connection')
                 totalsent += sent
@@ -113,12 +118,24 @@ class PicServ:
 
 
 def main():
-    if len(sys.argv) < 4:
+    addr = ''
+    root_path = ''
+    ports = []
+
+    if (len(sys.argv) == 1):
+        addr = socket.gethostname()
+        root_path = './webres'
+        ports.append(80)
+    elif len(sys.argv) < 4:
         print('At least 3 arguments were expected: root_path, addr and port')
+    else:
+        addr = sys.argv[2]
+        root_path = sys.argv[1]
+        ports = sys.argv[3:]
     servers = []
     try:
-        for port in sys.argv[3:]:
-            ps = PicServ(sys.argv[2], int(port), sys.argv[1])
+        for port in ports:
+            ps = PicServ(addr, int(port), root_path)
             ps.start_async()
             servers.append(ps)
         input()
